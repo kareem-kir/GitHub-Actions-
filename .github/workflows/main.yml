@@ -1,0 +1,109 @@
+name: Build Flutter APKs
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.16.0'
+        channel: 'stable'
+
+    - name: Get dependencies for user app
+      run: |
+        cd user_app
+        flutter pub get
+
+    - name: Get dependencies for admin app
+      run: |
+        cd admin_app
+        flutter pub get
+
+    - name: Build User App APK
+      run: |
+        cd user_app
+        flutter build apk --release --split-per-abi
+
+    - name: Build Admin App APK
+      run: |
+        cd admin_app
+        flutter build apk --release --split-per-abi
+
+    - name: Rename APK files
+      run: |
+        # User App APKs
+        cp user_app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk ./music-player-user-arm64.apk
+        cp user_app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk ./music-player-user-arm32.apk
+        cp user_app/build/app/outputs/flutter-apk/app-x86_64-release.apk ./music-player-user-x64.apk || echo "x64 APK not found"
+        
+        # Admin App APKs
+        cp admin_app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk ./music-player-admin-arm64.apk
+        cp admin_app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk ./music-player-admin-arm32.apk
+        cp admin_app/build/app/outputs/flutter-apk/app-x86_64-release.apk ./music-player-admin-x64.apk || echo "x64 APK not found"
+
+    - name: Upload User App APKs
+      uses: actions/upload-artifact@v3
+      with:
+        name: user-app-apks
+        path: |
+          music-player-user-*.apk
+
+    - name: Upload Admin App APKs
+      uses: actions/upload-artifact@v3
+      with:
+        name: admin-app-apks
+        path: |
+          music-player-admin-*.apk
+
+    - name: Create Release
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v1.0.${{ github.run_number }}
+        name: Music Player Release v1.0.${{ github.run_number }}
+        body: |
+          🎵 **Music Player App Release**
+          
+          ## 📱 تطبيق المستخدم (User App):
+          - `music-player-user-arm64.apk` - للهواتف الحديثة (64-bit)
+          - `music-player-user-arm32.apk` - للهواتف القديمة (32-bit)
+          
+          ## 🔐 تطبيق الأدمن (Admin App):
+          - `music-player-admin-arm64.apk` - للهواتف الحديثة (64-bit)
+          - `music-player-admin-arm32.apk` - للهواتف القديمة (32-bit)
+          
+          ## 🔑 بيانات الدخول:
+          **تطبيق الأدمن:**
+          - Email: admin@musicplayer.com
+          - Password: كلمة المرور التي اخترتها في Supabase
+          
+          ## 📋 ملاحظات:
+          - حمّل الملف المناسب لهاتفك (arm64 للهواتف الحديثة)
+          - تأكد من تفعيل "تثبيت من مصادر غير معروفة" في إعدادات الأندرويد
+          
+          **استمتع بتطبيق مشغل الموسيقى!** 🎶
+        files: |
+          music-player-user-*.apk
+          music-player-admin-*.apk
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
