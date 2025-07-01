@@ -60,14 +60,14 @@ jobs:
         cp admin_app/build/app/outputs/flutter-apk/app-x86_64-release.apk ./music-player-admin-x64.apk || echo "x64 APK not found"
 
     - name: Upload User App APKs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: user-app-apks
         path: |
           music-player-user-*.apk
 
     - name: Upload Admin App APKs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: admin-app-apks
         path: |
